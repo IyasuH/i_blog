@@ -1,0 +1,45 @@
+{% extends "blog/base.html" %}
+{% block content %}
+{% load static %}
+    <div class="blog_content">
+        <img src="{% static 'blog/images/blog_1.jpeg' %}" alt="blog image">
+        <h3>{{ blog.title }}</h3>
+        <h6>Author: {{ blog.posted_by }}</h6>
+        <p>Posted At: {{ blog.posted_at.date }}</p>
+        <p>{{ blog.content }}</p>
+    </div>
+
+    <div class="reaction">
+        <form method="post" action="{% url 'blog_detail' blog.pk%}">
+            {% csrf_token %}
+            <button type="submit" name="reaction_type" value="upvote" class="btn btn-primary">up vote</button>
+            <button type="submit" name="reaction_type" value="downvote" class="btn btn-primary">down vote</button>
+        </form>
+        <br>
+        {% for reaction in reactions %}
+        
+        {% endfor %}
+    </div>
+    <div class="comments">
+        {% for comment in comments %}
+        <br>
+        <div class="comment_content">
+            <p>{{ comment.content }}</p>
+            <h6>Author: {{ comment.posted_by }}</h6>
+            <p>Posted At: {{ comment.posted_at.date }}</p>
+        </div>
+        <a href="#" class="btn btn-primary">Edit</a>
+        <br>
+        {% endfor %}
+    </div>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">What do you think</label>
+            <textarea class="form-control" id="exampleFormControlTextarea1" rows="2" name="content" value="{{ form.content.value }}"></textarea>
+            <!-- <textarea class="form-control" id="exampleFormControlTextarea1" rows="2" name="{{ form.content }}" value="{{ form.content.value }}"></textarea> -->
+            {{ form.content.errors }}
+        </div>
+        <button type="submit" class="btn btn-primary">Comment</button>
+    </form>
+{% endblock %}
