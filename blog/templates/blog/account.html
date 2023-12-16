@@ -3,14 +3,15 @@
 {% load static %}
 <div class="account">
     <img src="{% static 'blog/images/account.png' %}" alt="account image">
-    <form method="POST" action="{% url 'account' request.user.id %}">
+    <form method="POST" action="{% url 'account' %}">
         {% csrf_token %}
         {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Update</button>
     </form>
-    <h4>{{ request.user.username }}</h4>
+    <!-- <h4>{{ request.user.username }}</h4>
     <h6>{{ request.user.first_name }}</h6>
     <h6>{{ request.user.last_name }}</h6>
     <p>{{ request.user.email }}</p>
-    <a href="#" class="btn btn-primary">Edit</a>
+    <a href="#" class="btn btn-primary">Edit</a> -->
 </div>
 {% endblock %}

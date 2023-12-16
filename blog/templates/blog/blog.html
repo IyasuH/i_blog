@@ -28,7 +28,9 @@
             <h6>Author: {{ comment.posted_by }}</h6>
             <p>Posted At: {{ comment.posted_at.date }}</p>
         </div>
+        {% if comment.posted_by.id == request.user.id%}
         <a href="#" class="btn btn-primary">Edit</a>
+        {% endif %}
         <br>
         {% endfor %}
     </div>

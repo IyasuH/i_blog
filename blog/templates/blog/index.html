@@ -13,7 +13,10 @@
         {% if request.user.is_authenticated %}
         <ul>
           <a href="/logout">Logout</a>
+          {% if request.user.is_staff %}
           <a href="/new_post">New Post</a>
+          {% endif %}
+          <a href="/my_account">Account</a>
         </ul>
         {% else %}
         <ul>
@@ -24,6 +27,12 @@
         <p>Hello, {{ request.user }}</p>
       </div>
       <div class="content">
+        <div class="search">
+          <form method="GET">
+            <input type="text" name="search">
+            <button type="submit">Search</button>
+          </form>
+        </div>
         {% for post in posts%}
         <div class="card w-50">
           <div class="card-body">
@@ -33,6 +42,8 @@
             <!-- <a href="/blog/{{ post.id }}" class="btn btn-primary">Read</a> -->
           </div>
         </div>
+        <br>
+        <br>
         {% endfor %}
       </div>
     </div>

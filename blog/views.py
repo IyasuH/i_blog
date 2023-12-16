@@ -1,16 +1,13 @@
-from typing import Any
-from django import http
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as login_auth, logout as logout_Auth
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.utils import timezone
 from django.urls import reverse
-from django.http import HttpResponse, HttpResponseRedirect
-from .forms import BlogForm, CommentForm, UserForm
+from .forms import BlogForm, CommentForm, UserForm, UpdateUserForm
 from .models import Blog, Comment, Reaction
 from django.views.generic import ListView, DetailView, UpdateView, CreateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
 
 
 # Create your views here.
@@ -56,11 +53,15 @@ class ListBlogView(ListView):
     template_name = 'blog/index.html'
     paginate_by = 10
     context_object_name = 'posts'
+    paginate_by = 5
 
-
-# def index(request):
-#     posts = Blog.objects.order_by("posted_at")
-#     return render(request, "blog/index.html", {'posts': posts})
+    def get_queryset(self):
+        search_query = self.request.GET.get('search')
+        print("search query: ", search_query)
+        queryvalue = super().get_queryset()
+        if search_query:
+            queryvalue = Blog.objects.filter(Q(content__contains=search_query) | Q(title__contains=search_query))
+        return queryvalue
 
 def login(request):
     if request.user.is_authenticated:
@@ -82,45 +83,6 @@ def login(request):
 def logout(request):
     logout_Auth(request)
     return redirect("home")
-
-# def new_blog(request):
-#     if not request.user.is_authenticated:
-#         return redirect('login')
-#     elif not request.user.is_staff:
-#         print("user is not staff cannot creat a post")
-#         return redirect('home')
-#     if request.method == 'POST' and request.user.is_authenticated:
-#         form = BlogForm(request.POST)
-#         if form.is_valid:
-#             print("[INFO]: data validated")
-#             isinstance = form.save(commit=False)
-#             isinstance.posted_by = request.user 
-#             form.save()
-#             return HttpResponseRedirect(reverse("home"))
-#         else:
-#             print("[INFO]: Some how data is not validating")
-#     else:
-#         form = BlogForm()
-#     return render(request, "blog/new_post.html", {'form': form})
-
-# def signup(request):
-#     if request.method == 'POST':
-#         form = UserForm(request.POST)
-#         if form.is_valid:
-#             isinstance = form.save(commit=False)
-#             isinstance.last_login = timezone.now()
-#             isinstance.date_joined = timezone.now()
-#             isinstance.is_superuser = False
-#             isinstance.is_staff = False
-#             isinstance.is_active = True
-#             # isinstance.password = isinstance.set_password(request.POST.get("password"))
-#             form.save()
-#             return redirect("home")
-#         else:
-#             print("[INFO]: form does not validate")
-#     else:
-#         form = UserForm()
-#     return render(request, "blog/signup.html", {'form':form})
 
 def blog_detail(request, blog_id):
     blg = get_object_or_404(Blog, id=blog_id)
@@ -158,4 +120,12 @@ def blog_detail(request, blog_id):
 def my_account(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, "blog/account.html")
+    detail = User.objects.get(pk=request.user.id)
+    form = UpdateUserForm(request.POST or None, instance=detail)
+    if form.is_valid():
+        form.save()
+    return render(request, "blog/account.html", {"form":form})
+
+
+def forgot_password(request):
+    return render(request, "blog/forgot_password.html")
