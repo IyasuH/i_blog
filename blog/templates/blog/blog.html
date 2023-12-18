@@ -12,13 +12,10 @@
     <div class="reaction">
         <form method="post" action="{% url 'blog_detail' blog.pk%}">
             {% csrf_token %}
-            <button type="submit" name="reaction_type" value="upvote" class="btn btn-primary">up vote</button>
-            <button type="submit" name="reaction_type" value="downvote" class="btn btn-primary">down vote</button>
+            <button type="submit" name="reaction_type" value="upvote" class="btn btn-primary">{{ up_vote_reaction }} | up vote</button>
+            <button type="submit" name="reaction_type" value="downvote" class="btn btn-primary">{{ down_vote_reaction}} | down vote</button>
         </form>
         <br>
-        {% for reaction in reactions %}
-        
-        {% endfor %}
     </div>
     <div class="comments">
         {% for comment in comments %}
@@ -29,7 +26,7 @@
             <p>Posted At: {{ comment.posted_at.date }}</p>
         </div>
         {% if comment.posted_by.id == request.user.id%}
-        <a href="#" class="btn btn-primary">Edit</a>
+        <a href="#" class="btn btn-primary">Del</a>
         {% endif %}
         <br>
         {% endfor %}

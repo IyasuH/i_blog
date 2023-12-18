@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from enumfields import Enum, EnumField
 
 # Create your models here
 # class User(models.Model):
@@ -25,12 +26,12 @@ class Comment(models.Model):
     def __str__(self):
         return self.content
 
+class REACTION_CHOICES(Enum):
+    up_vote = 'upvote'
+    down_vote = 'downvote'
+
 class Reaction(models.Model):
-    REACTION_CHOICES = (
-        ('upvote', 'UpVote'),
-        ('downvote', 'DownVote'),
-    )
     post = models.ForeignKey(Blog, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    raection_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
+    raection_type = EnumField(REACTION_CHOICES, max_length=8)
     created_at = models.DateField(auto_now_add=True)

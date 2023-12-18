@@ -87,8 +87,12 @@ def logout(request):
 def blog_detail(request, blog_id):
     blg = get_object_or_404(Blog, id=blog_id)
     comments = Comment.objects.filter(for_blog=blog_id)
-    reactions = Reaction.objects.filter(post=blog_id)
+    up_vote_reaction=Reaction.objects.all().filter(raection_type="upvote").filter(post=blog_id).count()
+    down_vote_reaction=Reaction.objects.all().filter(raection_type="downvote").filter(post=blog_id).count()
+
     if request.method == 'POST':
+        comment_val = request.POST.get('content')
+        reaction_type_ = request.POST.get('reaction_type')
         if not request.user.is_authenticated:
             return redirect('login')
         form = CommentForm(request.POST)
@@ -97,13 +101,12 @@ def blog_detail(request, blog_id):
             isinstance = form.save(commit=False)
             isinstance.posted_by = request.user
             isinstance.for_blog = blg
+            print("content created")
             form.save()
             # return redirect('blog_detail', blog_id=blog_id)
-    else:
-        form = CommentForm()
 
-    reaction_type_ = request.POST.get('reaction_type')
-    if request.user.is_authenticated:
+        # ---------------------------------------------------
+
         existing_reaction = Reaction.objects.filter(post=blg, user=request.user).first()
         if reaction_type_:
             if existing_reaction:
@@ -115,12 +118,28 @@ def blog_detail(request, blog_id):
                     user = request.user,
                     raection_type = reaction_type_
                 )
-    return render(request, "blog/blog.html", {'blog': blg, 'form':form, 'comments': comments, 'reactions':reactions})
+        
+    else:
+        form = CommentForm()
+
+    # if request.user.is_authenticated:
+    return render(request, "blog/blog.html", {'blog': blg, 'form':form, 'comments': comments, 'up_vote_reaction':up_vote_reaction, 'down_vote_reaction':down_vote_reaction})
+
+def edit_blog(request, blog_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    blg = get_object_or_404(Blog, pk=blog_id)
+    print(blg.title)
+    form = BlogForm(request.POST or None, instance=blg)
+    if form.is_valid():
+        form.save()
+    return render(request, "blog/edit_blog.html", {"form":form})
 
 def my_account(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    detail = User.objects.get(pk=request.user.id)
+    detail = get_object_or_404(User, pk=request.user.id)
+    # User.objects.get(pk=request.user.id)
     form = UpdateUserForm(request.POST or None, instance=detail)
     if form.is_valid():
         form.save()

@@ -11,4 +11,5 @@ urlpatterns = [
     path("blog/<int:blog_id>/", views.blog_detail, name="blog_detail"),
     path("my_account/", views.my_account, name="account"),
     path("forgot_password/", views.forgot_password, name="forgot_password"),
+    path("edit_blog/<int:blog_id>/", views.edit_blog, name="edit_blog"),
 ]

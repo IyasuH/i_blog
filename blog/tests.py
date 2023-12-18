@@ -1,24 +1,31 @@
 from django.test import TestCase
 from django.urls import reverse
-from .models import Blog, Comment
+from .models import Blog, Comment, Reaction
 from django.contrib.auth.models import User
 from .forms import BlogForm, CommentForm, UserForm
+from django.core.exceptions import ValidationError
 
 # Create your tests here.
 class AuthenticationTest(TestCase):
     def test_user_login_valid_credentials(self):
+        """
+        to test login with valid credentials
+        """
         username = 'testusername'
         password = 'testpassword'
         user_credentials = {
             'username': username,
             'password': password,
         }
-        user = User.objects.create_user(username=username, password=password)
+        User.objects.create_user(username=username, password=password)
         response = self.client.post('/login/', data=user_credentials)
         self.assertRedirects(response, '/')
         self.assertTrue(response.wsgi_request.user.is_authenticated)
 
     def test_user_login_invalid_credentials(self):
+        """
+        To test login with invalid credentials
+        """
         username = 'invlaidusername'
         password = 'invlaidpassword'
         user_credentials = {
@@ -63,6 +70,32 @@ class ModelTestCase(TestCase):
         instance = Comment.objects.create(posted_by=self.user, for_blog=self.blog, content="test content")
         saved_instance = Comment.objects.get(pk=instance.pk)
         self.assertEqual(instance, saved_instance)
+
+    def test_create_reaction(self):
+        """
+        to test the creation of reactions
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword")
+        self.client.force_login(self.user)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        instance = Reaction.objects.create(post=self.blog, user=self.user, raection_type='upvote')
+        saved_instance = Reaction.objects.get(pk=instance.pk)
+        self.assertEqual(instance, saved_instance) # to check if the reaction is created
+        # change reaction 
+        instance_1 = Reaction.objects.create(post=self.blog, user=self.user, raection_type='downvote')
+        saved_instance_1 = Reaction.objects.get(pk=instance_1.pk)
+        self.assertEqual(instance_1.pk, saved_instance_1.pk)
+
+    def test_create_wrong_reaction(self):
+        """
+        to test that wrong reaction_type will return ValidationError
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword")
+        self.client.force_login(self.user)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        with self.assertRaises(ValidationError):
+            Reaction.objects.create(post=self.blog, user=self.user, raection_type='up')
+
 
 class FormTestCase(TestCase):
     def setup(self):
@@ -139,7 +172,7 @@ class FormTestCase(TestCase):
         }
         form = UserForm(data=valid_data)
         self.assertTrue(form.is_valid())
- 
+
 class ViewFormAppTest(TestCase):
     def setup(self):
         pass
@@ -202,11 +235,92 @@ class ViewFormAppTest(TestCase):
         response = self.client.get('/login/')
         self.assertEqual(response.status_code, 200)     
 
-    def test_account(self):
+    def test_account_unauthorized(self):
         """
-        This test is to check the `account` url
+        To test the `account` url unauthorized
         """
         response = self.client.get('/my_account/')
+        self.assertRedirects(response, '/login/')
+
+    def test_account_authorized(self):
+        """
+        to test 'account' url authorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        response = self.client.get('/my_account/')
+        self.assertEqual(response.status_code, 200)
+        
+    def test_blog_detail_unauthorized(self):
+        """
+        To test the `blog_detail` url unauthorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        response = self.client.get(f'/blog/{self.blog.pk}')
+        self.assertRedirects(response, f'/blog/{self.blog.pk}/', status_code=301) # unauthorized users still can access blog detail
+
+    def test_blog_detail_authorized(self):
+        """
+        To test the `blog_detail` url authorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        response = self.client.get(f'/blog/{self.blog.pk}')
+        self.assertRedirects(response, f'/blog/{self.blog.pk}/', status_code=301) # authorized users still can access blog detail
+
+    def test_blog_detail_comment_creation_authorized(self):
+        """
+        to test comment creation for specific blog
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        comment_data = {
+            'content': "Test comment"
+        }
+        response = self.client.post(f'/blog/{self.blog.pk}/', data=comment_data)
+        created_object = Comment.objects.get(posted_by=self.user, for_blog=self.blog)
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertEqual(created_object.content, comment_data['content'])
+
+    def test_blog_detail_comment_creation_unauthorized(self):
+        """
+        to test comment creation for specific blog unautorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        comment_data = {
+            'content': "Test comment"
+        }
+        response = self.client.post(f'/blog/{self.blog.pk}/', data=comment_data)
+        self.assertRedirects(response, '/login/')
+
+    def test_blog_detail_reaction_authorized(self):
+        """
+        to test reaction creation authorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        vote_data = {
+            'reaction_type':'upvote'
+        }
+        response = self.client.post(f'/blog/{self.blog.pk}/', data=vote_data)
+        self.assertEqual(Reaction.objects.count(), 1)
+        self.assertEqual(response.status_code, 200)
+
+    def test_blog_detail_reaction_unauthorized(self):
+        """
+        to test reaction creation unauthorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+        vote_data = {
+            'reaction_type':'upvote'
+        }
+        response = self.client.post(f'/blog/{self.blog.pk}/', data=vote_data)
         self.assertRedirects(response, '/login/')
 
     def test_logout(self):
