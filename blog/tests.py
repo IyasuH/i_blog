@@ -1,9 +1,10 @@
-from django.test import TestCase
+from django.test import TestCase, RequestFactory
 from django.urls import reverse
 from .models import Blog, Comment, Reaction
 from django.contrib.auth.models import User
 from .forms import BlogForm, CommentForm, UserForm
 from django.core.exceptions import ValidationError
+from blog.views import ListBlogView
 
 # Create your tests here.
 class AuthenticationTest(TestCase):
@@ -205,21 +206,19 @@ class ViewFormAppTest(TestCase):
         response = self.client.post(reverse('new_blog_post'), data=post_blog)
         self.assertRedirects(response, '/')
 
-    # def test_new_blog_authenticated_authorized(self):
-    #     """
-    #     This test is to check the `new_post` url for authenticated and authorized user
-    #     """
-    #     # this test is faling because of somehow it is making is_staff value for user False even tho i enetered it as True
-    #     self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
-    #     print("\n username: ", self.user.username)
-    #     self.client.force_login(self.user)
-    #     post_blog = {
-    #         'title': 'test title',
-    #         'content': 'test content',
-    #     }
-    #     # print(self.client)
-    #     response = self.client.post(reverse('new_blog_post'), data=post_blog)
-    #     self.assertEqual(response.status_code, 201)
+    def test_new_blog_authenticated_authorized(self):
+        """
+        This test is to check the `new_post` url for authenticated and authorized user
+        """
+        # this test is faling because of somehow it is making is_staff value for user False even tho i enetered it as True
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        post_blog = {
+            'title': 'test title',
+            'content': 'test content',
+        }
+        self.client.post(reverse('new_blog_post'), data=post_blog)
+        self.assertEqual(Blog.objects.count(), 1)
 
     def test_signup(self):
         """
@@ -309,7 +308,7 @@ class ViewFormAppTest(TestCase):
         }
         response = self.client.post(f'/blog/{self.blog.pk}/', data=vote_data)
         self.assertEqual(Reaction.objects.count(), 1)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
 
     def test_blog_detail_reaction_unauthorized(self):
         """
@@ -330,3 +329,87 @@ class ViewFormAppTest(TestCase):
         response = self.client.get('/logout/')
         self.assertRedirects(response, '/')
 
+    def test_search_functionality(self):
+        """
+        To test the search functionality for blog list
+        """
+        self.factory = RequestFactory()
+        self.url = reverse('home')
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        Blog.objects.create(posted_by=self.user, title='blog test 1', content='blog test content item one')
+        Blog.objects.create(posted_by=self.user, title='blog test 2', content='blog test content item two')
+        Blog.objects.create(posted_by=self.user, title='blog test 3', content='blog test content item three')
+
+        request = self.factory.get(reverse('home'), data={'search': 'one'})
+        response = ListBlogView.as_view()(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'blog test 1') # this should appear in the search
+        self.assertNotContains(response, 'blog test 2') # this should not appear the query
+        self.assertNotContains(response, 'blog test 3') # this should not appear the query
+
+    def test_blog_edit_authorized(self):
+        """
+        to test blog edit authorized by user
+        """
+        self.factory = RequestFactory()
+        self.url = reverse('home')
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        test_blog = Blog.objects.create(posted_by=self.user, title='blog test 1', content='blog test content item one')
+        edited_blog = {
+            'title':'edited blog title',
+            'content':'edited blog content'
+        }
+        # print("test_blog id", test_blog.id)
+        response = self.client.post(f'/edit_blog/{test_blog.id}/', data=edited_blog)
+        # print("response: ", response)
+        edited_saved_blog = Blog.objects.get(id=test_blog.id)
+        self.assertEqual(edited_saved_blog.title, edited_blog['title'])
+
+    def test_blog_edit_unauthorized(self):
+        """
+        to test blog edit by unauthorized
+        """
+        self.factory = RequestFactory()
+        self.url = reverse('home')
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.user_2 = User.objects.create_user(username="testuse_2", password="testpassword_2", is_staff=True)
+        self.client.force_login(self.user_2)
+        test_blog = Blog.objects.create(posted_by=self.user, title='blog test 1', content='blog test content item one')
+        edited_blog = {
+            'title':'edited blog title',
+            'content':'edited blog content'
+        }
+        # print("test_blog id", test_blog.id)
+        response = self.client.post(f'/edit_blog/{test_blog.id}/', data=edited_blog)
+        # print("response: ", response)
+        edited_saved_blog = Blog.objects.get(id=test_blog.id)
+        self.assertNotEqual(edited_saved_blog.title, edited_blog['title'])
+
+
+    def test_comment_delete_authorized(self):
+        """
+        to test comment deletion authorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.client.force_login(self.user)
+        test_blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+
+        test_comment = Comment.objects.create(posted_by=self.user, for_blog=test_blog, content='Test comment')
+        self.client.get(f'/del_comment/{test_blog.pk}/{test_comment.pk}/')
+        self.assertEqual(Comment.objects.count(), 0)
+
+
+    def test_comment_delete_unauthorized(self):
+        """
+        to test comment deletion unauthorized
+        """
+        self.user = User.objects.create_user(username="testuser", password="testpassword", is_staff=True)
+        self.user_2 = User.objects.create_user(username="testuse_2", password="testpassword_2", is_staff=True)
+        self.client.force_login(self.user_2)
+        test_blog = Blog.objects.create(posted_by=self.user, title='blog test title', content='blog test content')
+
+        test_comment = Comment.objects.create(posted_by=self.user, for_blog=test_blog, content='Test comment')
+        self.client.get(f'/del_comment/{test_blog.pk}/{test_comment.pk}/')
+        self.assertEqual(Comment.objects.count(), 1) # the comment is not deleted since the user is not authorized(not the one that created the comment)

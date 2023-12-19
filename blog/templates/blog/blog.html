@@ -18,18 +18,33 @@
         <br>
     </div>
     <div class="comments">
-        {% for comment in comments %}
+        {% for comment in page_obj %}
         <br>
         <div class="comment_content">
             <p>{{ comment.content }}</p>
-            <h6>Author: {{ comment.posted_by }}</h6>
-            <p>Posted At: {{ comment.posted_at.date }}</p>
+            <h6>By: {{ comment.posted_by | upper }}</h6>
+            <p>At: {{ comment.posted_at.date }}</p>
         </div>
         {% if comment.posted_by.id == request.user.id%}
-        <a href="#" class="btn btn-primary">Del</a>
+        <a href="{% url 'delete_comment' comment_id=comment.id blog_id=blog.id%}" class="btn btn-primary">Del</a>
         {% endif %}
         <br>
         {% endfor %}
+        <div class="pagination">
+            <span class="step_links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; First</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                <span class="current">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                </span>
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
     </div>
     <form method="POST">
         {% csrf_token %}

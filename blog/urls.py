@@ -12,4 +12,5 @@ urlpatterns = [
     path("my_account/", views.my_account, name="account"),
     path("forgot_password/", views.forgot_password, name="forgot_password"),
     path("edit_blog/<int:blog_id>/", views.edit_blog, name="edit_blog"),
+    path("del_comment/<int:blog_id>/<int:comment_id>/", views.delete_comment, name="delete_comment"),
 ]

@@ -8,6 +8,7 @@ from .models import Blog, Comment, Reaction
 from django.views.generic import ListView, DetailView, UpdateView, CreateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
+from django.core.paginator import Paginator
 
 
 # Create your views here.
@@ -34,9 +35,9 @@ class CreateBlogView(LoginRequiredMixin, CreateView):
         also to check if user is staff or not since only staff can create blog post
         """
         form.instance.posted_by = self.request.user
-        print("\n is_staff: ", self.request.user.is_staff)
+        # print("\n is_staff: ", self.request.user.is_staff)
         if not self.request.user.is_staff:
-            print("[INFO] user is not staff cannot creat a post")
+            # print("[INFO] user is not staff cannot creat a post")
             return redirect('home')
         return super().form_valid(form)
 
@@ -57,7 +58,6 @@ class ListBlogView(ListView):
 
     def get_queryset(self):
         search_query = self.request.GET.get('search')
-        print("search query: ", search_query)
         queryvalue = super().get_queryset()
         if search_query:
             queryvalue = Blog.objects.filter(Q(content__contains=search_query) | Q(title__contains=search_query))
@@ -70,11 +70,11 @@ def login(request):
         # handle login
         username = request.POST.get("username")
         password = request.POST.get("password")
-        print("Username: ", username)
+        # print("Username: ", username)
         auth_user = authenticate(request, username=username, password=password)
         if auth_user is not None:
             login_auth(request, auth_user)
-            print ("user is autheticated")
+            # print ("user is autheticated")
             return redirect('home')
         else:
             messages.error(request, 'Invalid username or password')
@@ -87,6 +87,11 @@ def logout(request):
 def blog_detail(request, blog_id):
     blg = get_object_or_404(Blog, id=blog_id)
     comments = Comment.objects.filter(for_blog=blog_id)
+
+    comment_pagin = Paginator(comments, 3)
+    page_number = request.GET.get("page")
+    page_obj = comment_pagin.get_page(page_number)
+
     up_vote_reaction=Reaction.objects.all().filter(raection_type="upvote").filter(post=blog_id).count()
     down_vote_reaction=Reaction.objects.all().filter(raection_type="downvote").filter(post=blog_id).count()
 
@@ -101,7 +106,7 @@ def blog_detail(request, blog_id):
             isinstance = form.save(commit=False)
             isinstance.posted_by = request.user
             isinstance.for_blog = blg
-            print("content created")
+            # print("content created")
             form.save()
             # return redirect('blog_detail', blog_id=blog_id)
 
@@ -118,22 +123,30 @@ def blog_detail(request, blog_id):
                     user = request.user,
                     raection_type = reaction_type_
                 )
-        
+            return redirect('blog_detail', blog_id)
     else:
         form = CommentForm()
 
-    # if request.user.is_authenticated:
-    return render(request, "blog/blog.html", {'blog': blg, 'form':form, 'comments': comments, 'up_vote_reaction':up_vote_reaction, 'down_vote_reaction':down_vote_reaction})
+    return render(request, "blog/blog.html", {'blog': blg, 'form':form, 'page_obj': page_obj, 'up_vote_reaction':up_vote_reaction, 'down_vote_reaction':down_vote_reaction})
 
 def edit_blog(request, blog_id):
     if not request.user.is_authenticated:
         return redirect('login')
     blg = get_object_or_404(Blog, pk=blog_id)
-    print(blg.title)
     form = BlogForm(request.POST or None, instance=blg)
+    if blg.posted_by != request.user:
+        return redirect('blog_detail', blog_id)
     if form.is_valid():
         form.save()
     return render(request, "blog/edit_blog.html", {"form":form})
+
+def delete_comment(request, blog_id, comment_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    comment_ = get_object_or_404(Comment, pk=comment_id)
+    if comment_.posted_by.id == request.user.id:
+        comment_.delete()
+    return redirect('blog_detail', blog_id)
 
 def my_account(request):
     if not request.user.is_authenticated:

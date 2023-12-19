@@ -6,13 +6,12 @@
   {% csrf_token %}
   <div class="mb-3">
     <label for="exampleFormControlInput1" class="form-label">Title</label>
-    <input type="text" class="form-control" id="exampleFormControlInput1" placeholder="title" name="title" value="{{ form.title.value }}" required>
+    <input type="text" class="form-control" id="exampleFormControlInput1" placeholder="title" name="title" required>
   </div>
   <div class="mb-3">
     <label for="exampleFormControlTextarea1" class="form-label">Content</label>
-    <textarea class="form-control" id="exampleFormControlTextarea1" rows="4" name="content" value="{{ form.content.value }}" required></textarea>
+    <textarea class="form-control" id="exampleFormControlTextarea1" rows="4" name="content" required></textarea>
   </div>
-  <!-- {{ form.as_p }} -->
   <button type="submit" class="btn btn-primary">Post</button>
 </form>
 {% endblock %}
